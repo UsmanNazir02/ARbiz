@@ -1,0 +1,33 @@
+const router = require('express').Router();
+const {
+    register,
+    login,
+    logout,
+} = require('../controllers/authController');
+const authMiddleware = require('../middlewares/auth')
+const { ROLES } = require('../utils/constants');
+
+class AuthAPI {
+    constructor() {
+        this.router = router;
+        this.setupRoutes();
+    }
+
+    setupRoutes() {
+        const router = this.router;
+
+        router.post('/register', register);
+        router.post('/login', login);
+        router.post('/logout', authMiddleware(Object.values(ROLES)), logout);
+    }
+
+    getRouter() {
+        return this.router;
+    }
+
+    getRouterGroup() {
+        return '/auth';
+    }
+}
+
+module.exports = AuthAPI;
