@@ -1,4 +1,4 @@
-const { hash } = require("bcrypt");
+const { hash, compare } = require("bcrypt");
 const { findUser, createUser, updateUser } = require("../models/userModel");
 const { parseBody, asyncHandler, generateToken, generateRefreshToken, generateResponse } = require("../utils");
 const { registerUserValidation, loginUserValidation } = require("../validations/authValidation");
