@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { authService } from '../services/authService';
+import { useNavigate } from 'react-router-dom';
 
 const DashboardPage = ({ onLogout }) => {
     const [user, setUser] = useState(() => {
@@ -16,7 +17,7 @@ const DashboardPage = ({ onLogout }) => {
             onLogout();
         }
     };
-
+    const navigate = useNavigate();
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             {/* Enhanced Dashboard Header */}
@@ -79,7 +80,11 @@ const DashboardPage = ({ onLogout }) => {
                                     <h2 className="text-2xl font-bold text-white">Welcome back, {user?.name || 'User'}!</h2>
                                     <p className="mt-1 text-indigo-100">Here's what's happening with your AR cards today.</p>
                                 </div>
-                                <button className="mt-4 md:mt-0 px-6 py-2 bg-white text-indigo-600 font-medium rounded-lg hover:bg-indigo-50 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600">
+                                <button
+                                    onClick={() => navigate('/card/new')}
+                                    className="mt-4 md:mt-0 px-6 py-2 bg-white text-indigo-600 font-medium rounded-lg hover:bg-indigo-50 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600"
+                                >
+                                    
                                     Create New Card
                                 </button>
                             </div>

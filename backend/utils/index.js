@@ -1,4 +1,5 @@
 const { sign } = require("jsonwebtoken");
+const multer = require('multer');
 
 // Response generation utility
 exports.generateResponse = (data, message, res, code = 200) => {
@@ -38,3 +39,20 @@ exports.generateRefreshToken = (user) => {
 
     return refreshToken;
 };
+
+exports.upload = (folderName) => {
+    return multer({
+        storage: multer.diskStorage({
+            destination: function (req, file, cb) {
+                const uploadPath = `uploads/${folderName}/`;
+                fs.mkdirSync(uploadPath, { recursive: true })
+                cb(null, uploadPath);
+            },
+
+            // By default, multer removes file extensions so let's add them back
+            filename: generateFilename
+        }),
+        limits: { fileSize: 10 * 1024 * 1024 },  // max 10MB //
+        fileFilter: filterImage
+    })
+}
