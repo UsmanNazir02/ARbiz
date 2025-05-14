@@ -6,6 +6,7 @@ import RegisterPage from './components/pages/RegisterPage';
 import DashboardPage from './components/pages/Dashboard';
 import DesignCardPage from './components/pages/DesignCardPage';
 import './App.css';
+import MyCardsPage from './components/pages/MyCardsPage';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -36,6 +37,7 @@ function App() {
         <Route path="/dashboard" element={isAuthenticated ? <DashboardPage onLogout={handleLogout} /> : <Navigate to="/login" replace />} />
         <Route path="/card/new" element={isAuthenticated ? <DesignCardPage /> : <Navigate to="/login" replace />} />
         <Route path="/card/edit/:id" element={isAuthenticated ? <DesignCardPage /> : <Navigate to="/login" replace />} />
+        <Route path="/my-cards" element={isAuthenticated ? <MyCardsPage /> : <Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
