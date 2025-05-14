@@ -264,7 +264,7 @@ const DesignCardPage = () => {
                                     </h2>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
-                                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 flex items-center">
+                                            <label htmlFor="phone" className="text-sm font-medium text-gray-700 flex items-center">
                                                 <Phone className="h-4 w-4 mr-1 text-gray-500" />
                                                 Phone
                                             </label>
@@ -279,7 +279,8 @@ const DesignCardPage = () => {
                                             />
                                         </div>
                                         <div>
-                                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 flex items-center">
+                                            <label htmlFor="email" className="text-sm font-medium text-gray-700 flex items-center">
+
                                                 <Mail className="h-4 w-4 mr-1 text-gray-500" />
                                                 Email
                                             </label>
@@ -294,7 +295,8 @@ const DesignCardPage = () => {
                                             />
                                         </div>
                                         <div>
-                                            <label htmlFor="website" className="block text-sm font-medium text-gray-700 flex items-center">
+                                            <label htmlFor="website" className="text-sm font-medium text-gray-700 flex items-center">
+
                                                 <Globe className="h-4 w-4 mr-1 text-gray-500" />
                                                 Website
                                             </label>
@@ -309,7 +311,8 @@ const DesignCardPage = () => {
                                             />
                                         </div>
                                         <div>
-                                            <label htmlFor="address" className="block text-sm font-medium text-gray-700 flex items-center">
+                                            <label htmlFor="address" className="text-sm font-medium text-gray-700 flex items-center">
+
                                                 <MapPin className="h-4 w-4 mr-1 text-gray-500" />
                                                 Address
                                             </label>
@@ -456,7 +459,8 @@ const DesignCardPage = () => {
                                         onChange={handleChange}
                                         className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                     />
-                                    <label htmlFor="isPublished" className="ml-2 block text-sm text-gray-700 flex items-center">
+                                    <label htmlFor="isPublished" className="ml-2 text-sm font-medium text-gray-700 flex items-center">
+
                                         <Eye className="h-4 w-4 mr-1 text-gray-500" />
                                         Publish card (make it visible to others)
                                     </label>
