@@ -24,10 +24,15 @@ const cardSchema = new Schema({
 
     // Whether the card is published or still being designed
     isPublished: { type: Boolean, default: false },
-}, {
-    timestamps: true,
-    versionKey: false,
-});
+
+    qrCode: { type: String },        // data-URI PNG
+    arEnabled: { type: Boolean, default: true },
+    viewerUrl: { type: String },
+    cardId: { type: String, unique: true },   // slender public id
+    glbUrl: { type: String },        // optional – if you pre-bake a 3-D model
+    // analytics
+    scanCount: { type: Number, default: 0 }
+}, { timestamps: true, versionKey: false, });
 
 const CardModel = model("Card", cardSchema);
 

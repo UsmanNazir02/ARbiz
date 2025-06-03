@@ -27,10 +27,25 @@ app.use(cookieSession({
     keys: [process.env.COOKIE_KEY],
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
 }));
+
 app.use(cors({
-    origin: ['*', 'http://localhost:5173'],
-    credentials: true
+    origin: [
+        'http://localhost:5173',
+        'https://281c-2400-adc1-154-aa00-b0ff-fbd5-2f4b-7fb0.ngrok-free.app',
+        'https://*.ngrok-free.app', // Allow any ngrok subdomain
+        'https://*.ngrok.io' // Legacy ngrok domains
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning']
 }));
+
+app.use((req, res, next) => {
+    // Set ngrok header for responses
+    res.header('ngrok-skip-browser-warning', 'true');
+    next();
+});
+
 
 app.get('/', (req, res) => res.json({ message: `Welcome to the ${process.env.APP_NAME} Project` }));
 

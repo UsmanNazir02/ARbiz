@@ -1,4 +1,4 @@
-const { fetchUserCards, getCardById, createCard, updateCard, deleteCard } = require('../controllers/cardController');
+const { fetchUserCards, getCardById, createCard, updateCard, deleteCard, getCardQR, updateCardScanCount, getCardByPublicId } = require('../controllers/cardController');
 const { ROLES } = require('../utils/constants');
 const authMiddleware = require('../middlewares/auth');
 
@@ -15,6 +15,9 @@ class CardAPI {
 
         router.get('/', authMiddleware(Object.values(ROLES)), fetchUserCards);
         router.get('/:id', authMiddleware(Object.values(ROLES)), getCardById);
+        router.get('/qr/:id', authMiddleware(Object.values(ROLES)), getCardQR);
+        router.get('/public/:cardId', getCardByPublicId);
+        router.get('viewer/:cardId', authMiddleware(Object.values(ROLES)), updateCardScanCount);
 
         router.post('/', authMiddleware(Object.values(ROLES)), createCard);
 

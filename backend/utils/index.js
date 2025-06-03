@@ -1,5 +1,7 @@
 const { sign } = require("jsonwebtoken");
 const multer = require('multer');
+const crypto = require('crypto');
+const QRCode = require('qrcode');
 
 // Response generation utility
 exports.generateResponse = (data, message, res, code = 200) => {
@@ -56,3 +58,7 @@ exports.upload = (folderName) => {
         fileFilter: filterImage
     })
 }
+
+exports.createPublicId = () => crypto.randomBytes(4).toString('hex');   // 8-char slug
+
+exports.createQr = async (viewerUrl) => QRCode.toDataURL(viewerUrl, { margin: 1 });   

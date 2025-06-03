@@ -7,6 +7,7 @@ import DashboardPage from './components/pages/Dashboard';
 import DesignCardPage from './components/pages/DesignCardPage';
 import './App.css';
 import MyCardsPage from './components/pages/MyCardsPage';
+import CardViewerPage from './components/pages/CardViewerPage';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -32,6 +33,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/viewer/:cardId" element={<CardViewerPage />} />
         <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage onLogin={handleLogin} />} />
         <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage onLogin={handleLogin} />} />
         <Route path="/dashboard" element={isAuthenticated ? <DashboardPage onLogout={handleLogout} /> : <Navigate to="/login" replace />} />

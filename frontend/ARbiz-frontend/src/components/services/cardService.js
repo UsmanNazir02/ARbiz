@@ -49,5 +49,15 @@ export const cardService = {
         } catch (error) {
             throw error.response?.data || error.message;
         }
+    },
+
+    getCardByPublicId: async (cardId) => {
+        try {
+            const response = await axiosInstance.get(`/card/public/${cardId}`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
     }
+
 };

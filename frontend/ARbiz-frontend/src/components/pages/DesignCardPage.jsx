@@ -54,14 +54,20 @@ const DesignCardPage = () => {
         if (id) {
             setLoading(true);
             cardService.getCardById(id)
-                .then(({ data }) => {
-                    setFormData(data);
-                    if (data.logo) setLogoPreview(data.logo);
-                    if (data.backgroundImage) setBgPreview(data.backgroundImage);
+                .then((response) => {
+                    console.log('Design page - Full response:', response);
+
+                    // Handle both cases: response.data or response itself
+                    const cardData = response.data || response;
+                    console.log('Design page - Card data:', cardData);
+
+                    setFormData(cardData);
+                    if (cardData.logo) setLogoPreview(cardData.logo);
+                    if (cardData.backgroundImage) setBgPreview(cardData.backgroundImage);
                 })
                 .catch(err => {
+                    console.error('Design page error:', err);
                     setMessage({ type: 'error', text: 'Failed to load card data' });
-                    console.error(err);
                 })
                 .finally(() => setLoading(false));
         }
@@ -111,10 +117,14 @@ const DesignCardPage = () => {
             }
 
             if (id) {
-                await cardService.updateCard(id, updatedFormData);
+                const res = await cardService.updateCard(id, updatedFormData);
+                const { qrCode } = res.data;
+                setFormData(prev => ({ ...prev, qrCode }));
                 setMessage({ type: 'success', text: 'Card updated successfully!' });
             } else {
-                await cardService.createCard(updatedFormData);
+                const res = await cardService.createCard(updatedFormData);
+                const { qrCode } = res.data;
+                setFormData(prev => ({ ...prev, qrCode }));
                 setMessage({ type: 'success', text: 'Card created successfully!' });
             }
 
@@ -566,11 +576,17 @@ const DesignCardPage = () => {
                                             <p className="text-sm text-gray-600 mb-3 text-center">
                                                 Scan this card with our AR app to see it in augmented reality
                                             </p>
+
                                             <div className="bg-gray-100 p-4 rounded-md flex justify-center">
-                                                <div className="w-32 h-32 bg-gray-300 flex items-center justify-center text-gray-500 text-xs">
-                                                    QR Code Placeholder
-                                                </div>
+                                                {formData.qrCode ? (
+                                                    <img src={formData.qrCode} alt="Scan me" className="w-32 h-32" />
+                                                ) : (
+                                                    <div className="w-32 h-32 bg-gray-300 flex items-center justify-center">
+                                                        Loading QR…
+                                                    </div>
+                                                )}
                                             </div>
+
                                             <div className="flex justify-center mt-4">
                                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${formData.isPublished ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                                     {formData.isPublished ? (
