@@ -65,11 +65,11 @@ const MyCardsPage = () => {
 
                 {cards.length === 0 ? (
                     <div className="text-center mt-24">
-                        <img
+                        {/* <img
                             src="/src/assets/empty-illustration.svg"
                             alt="No Cards"
                             className="mx-auto w-72 opacity-80 mb-6"
-                        />
+                        /> */}
                         <h3 className="text-2xl font-semibold text-gray-800 mb-2">No Cards Available</h3>
                         <p className="text-gray-500 mb-5">It looks like you haven’t created any AR cards yet.</p>
                         <button

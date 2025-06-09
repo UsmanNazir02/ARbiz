@@ -1,293 +1,201 @@
+// src/components/pages/CardViewerPage.jsx
 import { useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { cardService } from '../services/cardService';
+import '@google/model-viewer';
+
+import SceneAR from '../../xr/SceneAR';     // WebXR
+import MarkerAR from '../../xr/MarkerAR';    // AR.js
+import Scene3D from '../../xr/Scene3D';     // fallback 3-D
 
 export default function CardViewerPage() {
     const { cardId } = useParams();
     const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [mode, setMode] = useState('loading'); // loading | ar | marker | fallback
     const [error, setError] = useState(null);
+    const sentAnalyticsRef = useRef(false);
+    const modeDetectedRef = useRef(false);
 
-    // Load card data
     useEffect(() => {
         if (!cardId) {
-            setError('No card ID provided');
-            setLoading(false);
+            setError('Missing card id');
             return;
         }
 
-        console.log('Loading card with ID:', cardId);
-
-        const loadCard = async () => {
-            try {
-                const cardData = await cardService.getCardByPublicId(cardId);
-                console.log('Received card data:', cardData);
-                setData(cardData);
-            } catch (err) {
-                console.error('Failed to load card:', err);
-                setError(err.message || 'Failed to load card');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadCard();
+        cardService.getCardByPublicId(cardId)
+            .then((res) => setData(res.data))
+            .catch((e) => setError(e?.message || 'Network error'));
     }, [cardId]);
 
-    // Update analytics
     useEffect(() => {
-        if (!cardId || !data) return;
-
-        console.log('Updating analytics for cardId:', cardId);
-        cardService.updateAnalytics(cardId);
+        if (!cardId || !data || sentAnalyticsRef.current) return;
+        sentAnalyticsRef.current = true;
+        cardService.updateAnalytics(cardId).catch(() => { });
     }, [cardId, data]);
 
-    // Show loading state
-    if (loading) {
-        return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100vh',
-                fontSize: '18px',
-                background: '#f5f5f5'
-            }}>
-                <div style={{ textAlign: 'center' }}>
-                    <div style={{
-                        width: '50px',
-                        height: '50px',
-                        border: '3px solid #ddd',
-                        borderTop: '3px solid #6366f1',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite',
-                        margin: '0 auto 20px'
-                    }}></div>
-                    Loading your business card...
-                    <div style={{ fontSize: '12px', marginTop: '10px', color: '#666' }}>
-                        Card ID: {cardId}
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    // Mode detection with better error handling
+    useEffect(() => {
+        if (modeDetectedRef.current) return;
+        modeDetectedRef.current = true;
 
-    // Show error state
-    if (error) {
-        return (
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100vh',
-                fontSize: '18px',
-                color: '#e74c3c',
-                padding: '20px',
-                textAlign: 'center',
-                background: '#f5f5f5'
-            }}>
-                <h3 style={{ color: '#e74c3c', marginBottom: '10px' }}>Oops! Something went wrong</h3>
-                <p>{error}</p>
-                <div style={{ fontSize: '12px', marginTop: '10px', color: '#666', background: '#f8f9fa', padding: '10px', borderRadius: '5px' }}>
-                    <strong>Debug Info:</strong><br />
-                    Card ID: {cardId}<br />
-                    URL: {window.location.href}<br />
-                    Check browser console for detailed logs
-                </div>
+        (async () => {
+            try {
+                // Check WebXR support first
+                if (navigator.xr) {
+                    try {
+                        const supported = await navigator.xr.isSessionSupported('immersive-ar');
+                        if (supported) {
+                            console.log('WebXR AR supported, using SceneAR');
+                            setMode('ar');
+                            return;
+                        }
+                    } catch (xrError) {
+                        console.warn('WebXR check failed:', xrError);
+                    }
+                }
+
+                // Check if we're on a mobile device for AR.js
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+                if (isMobile) {
+                    console.log('Mobile device detected, using MarkerAR');
+                    setMode('marker');
+                } else {
+                    console.log('Desktop device, using Scene3D fallback');
+                    setMode('fallback');
+                }
+            } catch (error) {
+                console.error('Mode detection failed:', error);
+                setMode('fallback');
+            }
+        })();
+    }, []);
+
+    /* ---------- Component handlers ---------- */
+    const handleARFail = () => {
+        console.log('WebXR failed, falling back to MarkerAR');
+        setMode('marker');
+    };
+
+    const handleMarkerFail = () => {
+        console.log('MarkerAR failed, falling back to Scene3D');
+        setMode('fallback');
+    };
+
+    /* ---------- Render states ---------- */
+    if (error) return <ErrorScreen msg={error} />;
+    if (!data) return <LoadingScreen />;
+    if (mode === 'loading') return <LoadingScreen msg="Detecting AR capabilities..." />;
+
+    switch (mode) {
+        case 'ar':
+            return <SceneAR data={data} onFail={handleARFail} />;
+        case 'marker':
+            return <MarkerAR data={data} onFail={handleMarkerFail} />;
+        default:
+            return <Scene3D data={data} />;
+    }
+}
+
+function LoadingScreen({ msg = "Loading..." }) {
+    return (
+        <div style={styles.center}>
+            <div className="loader" style={styles.loader} />
+            <p style={styles.loadingText}>{msg}</p>
+        </div>
+    );
+}
+
+function ErrorScreen({ msg }) {
+    return (
+        <div style={styles.center}>
+            <div style={styles.errorContainer}>
+                <h3 style={styles.errorTitle}>Unable to Load Card</h3>
+                <p style={styles.errorMessage}>{msg}</p>
                 <button
                     onClick={() => window.location.reload()}
-                    style={{
-                        marginTop: '20px',
-                        padding: '10px 20px',
-                        background: '#6366f1',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer'
-                    }}
+                    style={styles.retryButton}
                 >
                     Try Again
                 </button>
             </div>
-        );
-    }
-
-    // Show message if no data
-    if (!data) {
-        return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100vh',
-                fontSize: '18px',
-                background: '#f5f5f5'
-            }}>
-                No card data found
-            </div>
-        );
-    }
-
-    // Card display
-    return (
-        <div style={{
-            width: '100%',
-            minHeight: '100vh',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '20px',
-            boxSizing: 'border-box'
-        }}>
-            <div style={{
-                background: 'white',
-                borderRadius: '15px',
-                padding: '30px',
-                boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-                maxWidth: '400px',
-                width: '100%',
-                textAlign: 'center'
-            }}>
-                {/* Debug info - remove in production */}
-                <div style={{
-                    background: '#f8f9fa',
-                    padding: '10px',
-                    borderRadius: '5px',
-                    marginBottom: '20px',
-                    fontSize: '12px',
-                    textAlign: 'left'
-                }}>
-                    <strong>Debug Info:</strong><br />
-                    Card ID: {cardId}<br />
-                    Has Data: {data ? 'Yes' : 'No'}<br />
-                    Data Type: {typeof data}<br />
-                    Data Keys: {data ? Object.keys(data).join(', ') : 'None'}<br />
-                    {data && `Name: ${data.fullName || 'Not set'}`}<br />
-                    {data && `Company: ${data.companyName || 'Not set'}`}
-                </div>
-
-                {/* Show card image if available */}
-                {data.cardImage && (
-                    <img
-                        src={data.cardImage}
-                        alt="Business Card"
-                        style={{
-                            width: '100%',
-                            height: 'auto',
-                            borderRadius: '10px',
-                            marginBottom: '20px'
-                        }}
-                        onError={(e) => {
-                            console.log('Card image failed to load:', data.cardImage);
-                            e.target.style.display = 'none';
-                        }}
-                    />
-                )}
-
-                {/* Card content */}
-                <div style={{
-                    background: data.themeColor || '#6366f1',
-                    color: 'white',
-                    padding: '30px',
-                    borderRadius: '10px',
-                    marginBottom: '20px',
-                    fontFamily: data.fontStyle || 'Arial, sans-serif'
-                }}>
-                    {data.logo && (
-                        <img
-                            src={data.logo}
-                            alt="Logo"
-                            style={{
-                                width: '60px',
-                                height: '60px',
-                                objectFit: 'contain',
-                                marginBottom: '15px'
-                            }}
-                            onError={(e) => {
-                                console.log('Logo failed to load:', data.logo);
-                                e.target.style.display = 'none';
-                            }}
-                        />
-                    )}
-
-                    <h2 style={{ margin: '0 0 5px 0', fontSize: '24px' }}>
-                        {data.fullName || 'Business Card'}
-                    </h2>
-
-                    {data.designation && (
-                        <p style={{ margin: '0 0 10px 0', fontSize: '16px', opacity: 0.9 }}>
-                            {data.designation}
-                        </p>
-                    )}
-
-                    {data.companyName && (
-                        <p style={{ margin: '0 0 15px 0', fontSize: '18px', fontWeight: 'bold' }}>
-                            {data.companyName}
-                        </p>
-                    )}
-                </div>
-
-                {/* Contact Information */}
-                <div style={{ textAlign: 'left', color: '#333' }}>
-                    {data.phone && (
-                        <p style={{ margin: '10px 0', fontSize: '16px' }}>
-                            📞 <a href={`tel:${data.phone}`} style={{ color: '#6366f1', textDecoration: 'none' }}>
-                                {data.phone}
-                            </a>
-                        </p>
-                    )}
-
-                    {data.email && (
-                        <p style={{ margin: '10px 0', fontSize: '16px' }}>
-                            ✉️ <a href={`mailto:${data.email}`} style={{ color: '#6366f1', textDecoration: 'none' }}>
-                                {data.email}
-                            </a>
-                        </p>
-                    )}
-
-                    {data.website && (
-                        <p style={{ margin: '10px 0', fontSize: '16px' }}>
-                            🌐 <a href={data.website} target="_blank" rel="noopener noreferrer" style={{ color: '#6366f1', textDecoration: 'none' }}>
-                                {data.website}
-                            </a>
-                        </p>
-                    )}
-
-                    {data.address && (
-                        <p style={{ margin: '10px 0', fontSize: '16px' }}>
-                            📍 {data.address}
-                        </p>
-                    )}
-                </div>
-
-                {/* QR Code if available */}
-                {data.qrCode && (
-                    <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                        <img
-                            src={data.qrCode}
-                            alt="QR Code"
-                            style={{
-                                width: '100px',
-                                height: '100px',
-                                border: '2px solid #eee',
-                                borderRadius: '10px'
-                            }}
-                        />
-                        <p style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                            Scan to share
-                        </p>
-                    </div>
-                )}
-            </div>
-
-            <style jsx>{`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `}</style>
         </div>
     );
+}
+
+const styles = {
+    center: {
+        width: '100vw',
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'Arial, sans-serif',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    },
+    loader: {
+        width: '50px',
+        height: '50px',
+        border: '4px solid rgba(255, 255, 255, 0.3)',
+        borderTop: '4px solid white',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite',
+        marginBottom: '20px'
+    },
+    loadingText: {
+        color: 'white',
+        fontSize: '18px',
+        margin: 0
+    },
+    errorContainer: {
+        background: 'rgba(255, 255, 255, 0.95)',
+        padding: '40px',
+        borderRadius: '12px',
+        textAlign: 'center',
+        maxWidth: '400px',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+    },
+    errorTitle: {
+        color: '#e53e3e',
+        fontSize: '24px',
+        margin: '0 0 16px 0',
+        fontWeight: 'bold'
+    },
+    errorMessage: {
+        color: '#666',
+        fontSize: '16px',
+        margin: '0 0 24px 0',
+        lineHeight: '1.5'
+    },
+    retryButton: {
+        background: '#667eea',
+        color: 'white',
+        border: 'none',
+        padding: '12px 24px',
+        borderRadius: '8px',
+        fontSize: '16px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        transition: 'background 0.3s ease'
+    }
+};
+
+// Add global CSS for animations
+if (typeof document !== 'undefined') {
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .loader {
+            animation: spin 1s linear infinite;
+        }
+    `;
+    if (!document.head.querySelector('style[data-card-viewer]')) {
+        styleSheet.setAttribute('data-card-viewer', 'true');
+        document.head.appendChild(styleSheet);
+    }
 }

@@ -13,7 +13,6 @@ module.exports = (roles) => {
         try {
             const decoded = verify(token, process.env.JWT_SECRET);
             req.user = { ...decoded };
-
             // If it's a reset token, skip role and user activity checks
             if (req.header('resetToken')) {
                 return next();
@@ -21,7 +20,6 @@ module.exports = (roles) => {
 
             // Check user activity and roles for access tokens
             const user = await findUser({ _id: req.user.id });
-
             if (!user || !user.isActive) return next({
                 statusCode: STATUS_CODES.FORBIDDEN,
                 message: 'Your account is inactive, please contact admin'

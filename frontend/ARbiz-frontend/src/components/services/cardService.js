@@ -58,6 +58,15 @@ export const cardService = {
         } catch (error) {
             throw error.response?.data || error.message;
         }
+    },
+    updateAnalytics: async (cardId) => {
+        try {
+            const response = await axiosInstance.put(`/card/viewer/${cardId}`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        }
     }
+
 
 };

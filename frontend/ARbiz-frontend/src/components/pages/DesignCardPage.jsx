@@ -18,6 +18,9 @@ import {
     Settings
 } from 'lucide-react';
 
+// Add API base URL configuration
+const API_BASE_URL = 'http://localhost:3020';
+
 const DesignCardPage = () => {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -31,7 +34,7 @@ const DesignCardPage = () => {
         email: '',
         website: '',
         address: '',
-        themeColor: '#6366f1', // Updated default to match indigo theme
+        themeColor: '#6366f1',
         fontStyle: 'Poppins',
         logo: '',
         backgroundImage: '',
@@ -43,6 +46,8 @@ const DesignCardPage = () => {
     const [logoPreview, setLogoPreview] = useState('');
     const [bgPreview, setBgPreview] = useState('');
     const [loading, setLoading] = useState(false);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [uploadingBg, setUploadingBg] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
 
     const [user, setUser] = useState(() => {
@@ -55,15 +60,15 @@ const DesignCardPage = () => {
             setLoading(true);
             cardService.getCardById(id)
                 .then((response) => {
-                    console.log('Design page - Full response:', response);
-
-                    // Handle both cases: response.data or response itself
                     const cardData = response.data || response;
-                    console.log('Design page - Card data:', cardData);
-
                     setFormData(cardData);
-                    if (cardData.logo) setLogoPreview(cardData.logo);
-                    if (cardData.backgroundImage) setBgPreview(cardData.backgroundImage);
+                    // Set previews from existing card data
+                    if (cardData.logo) {
+                        setLogoPreview(cardData.logo);
+                    }
+                    if (cardData.backgroundImage) {
+                        setBgPreview(cardData.backgroundImage);
+                    }
                 })
                 .catch(err => {
                     console.error('Design page error:', err);
@@ -81,23 +86,119 @@ const DesignCardPage = () => {
         }));
     };
 
-    const handleUpload = async (file, type) => {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            const response = await axios.post(`/upload/${type}`, formData);
-            return response.data.url;
-        } catch (error) {
-            console.error(`Error uploading ${type}:`, error);
-            setMessage({ type: 'error', text: `Failed to upload ${type}` });
-            throw error;
-        }
-    };
-
     const handleLogout = () => {
         localStorage.clear();
         navigate('/login');
+    };
+
+    // Fixed logo upload handler
+    const handleLogoUpload = async (file) => {
+        setUploadingLogo(true);
+        setLogoFile(file);
+
+        // Set preview immediately for better UX
+        const previewUrl = URL.createObjectURL(file);
+        setLogoPreview(previewUrl);
+
+        const uploadFormData = new FormData();
+        uploadFormData.append('logo', file);
+
+        try {
+            const response = await axios.post(`${API_BASE_URL}/api/upload/logo`, uploadFormData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                },
+            });
+
+            // Get the Cloudinary URL from response
+            const cloudinaryUrl = response.data.data.logo || response.data.data;
+
+            // Update both formData and preview with Cloudinary URL
+            setFormData(prev => ({ ...prev, logo: cloudinaryUrl }));
+            setLogoPreview(cloudinaryUrl);
+
+            // Clean up local preview URL
+            URL.revokeObjectURL(previewUrl);
+
+            setMessage({
+                type: 'success',
+                text: 'Logo uploaded successfully!'
+            });
+
+            return cloudinaryUrl;
+        } catch (error) {
+            console.error('Error uploading logo:', error);
+            setMessage({
+                type: 'error',
+                text: 'Failed to upload logo. Please try again.'
+            });
+
+            // Reset on error
+            setLogoFile(null);
+            setLogoPreview('');
+            setFormData(prev => ({ ...prev, logo: '' }));
+            URL.revokeObjectURL(previewUrl);
+
+            throw error;
+        } finally {
+            setUploadingLogo(false);
+        }
+    };
+
+    // Fixed background upload handler
+    const handleBackgroundUpload = async (file) => {
+        setUploadingBg(true);
+        setBgFile(file);
+
+        // Set preview immediately for better UX
+        const previewUrl = URL.createObjectURL(file);
+        setBgPreview(previewUrl);
+
+        const uploadFormData = new FormData();
+        uploadFormData.append('background', file);
+
+        try {
+            const response = await axios.post(`${API_BASE_URL}/api/upload/background`, uploadFormData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                },
+            });
+
+            // Get the Cloudinary URL from response
+            const cloudinaryUrl = response.data.data.background || response.data.data;
+
+            // Update both formData and preview with Cloudinary URL
+            setFormData(prev => ({ ...prev, backgroundImage: cloudinaryUrl }));
+            setBgPreview(cloudinaryUrl);
+
+            // Clean up local preview URL
+            URL.revokeObjectURL(previewUrl);
+
+            setMessage({
+                type: 'success',
+                text: 'Background image uploaded successfully!'
+            });
+
+            return cloudinaryUrl;
+        } catch (error) {
+            console.error('Error uploading background:', error);
+            setMessage({
+                type: 'error',
+                text: 'Failed to upload background image. Please try again.'
+            });
+
+            // Reset on error
+            setBgFile(null);
+            setBgPreview('');
+            setFormData(prev => ({ ...prev, backgroundImage: '' }));
+            URL.revokeObjectURL(previewUrl);
+
+            throw error;
+        } finally {
+            setUploadingBg(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -106,61 +207,117 @@ const DesignCardPage = () => {
         setMessage({ type: '', text: '' });
 
         try {
-            const updatedFormData = { ...formData };
+            // Since images are already uploaded to Cloudinary, just send form data as JSON
+            const submitData = {
+                ...formData,
+                // Images are already stored in formData.logo and formData.backgroundImage as Cloudinary URLs
+            };
 
-            if (logoFile) {
-                updatedFormData.logo = await handleUpload(logoFile, 'logo');
-            }
-
-            if (bgFile) {
-                updatedFormData.backgroundImage = await handleUpload(bgFile, 'background');
-            }
+            let response;
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                },
+            };
 
             if (id) {
-                const res = await cardService.updateCard(id, updatedFormData);
-                const { qrCode } = res.data;
-                setFormData(prev => ({ ...prev, qrCode }));
-                setMessage({ type: 'success', text: 'Card updated successfully!' });
+                // Update existing card
+                response = await axios.put(`${API_BASE_URL}/api/card/update/${id}`, submitData, config);
             } else {
-                const res = await cardService.createCard(updatedFormData);
-                const { qrCode } = res.data;
-                setFormData(prev => ({ ...prev, qrCode }));
-                setMessage({ type: 'success', text: 'Card created successfully!' });
+                // Create new card
+                response = await axios.post(`${API_BASE_URL}/api/card`, submitData, config);
             }
 
-            // Redirect after a short delay so the user can see the success message
+            const responseData = response.data.data || response.data;
+
+            // Update form data with response data including QR code
+            if (responseData.qrCode) {
+                setFormData(prev => ({ ...prev, qrCode: responseData.qrCode }));
+            }
+
+            setMessage({
+                type: 'success',
+                text: id ? 'Card updated successfully!' : 'Card created successfully!'
+            });
+
+            // Redirect after a short delay
             setTimeout(() => navigate('/dashboard'), 1500);
         } catch (err) {
-            console.error(err);
-            setMessage({ type: 'error', text: 'Failed to save card. Please try again.' });
+            console.error('Error saving card:', err);
+            setMessage({
+                type: 'error',
+                text: err.response?.data?.message || 'Failed to save card. Please try again.'
+            });
         } finally {
             setLoading(false);
         }
     };
 
+    const handleDeleteImage = async (imageType) => {
+        if (!id) {
+            // If not editing an existing card, just clear the local state
+            if (imageType === 'logo') {
+                setLogoFile(null);
+                setLogoPreview('');
+                setFormData(prev => ({ ...prev, logo: '' }));
+            } else if (imageType === 'background') {
+                setBgFile(null);
+                setBgPreview('');
+                setFormData(prev => ({ ...prev, backgroundImage: '' }));
+            }
+            return;
+        }
+
+        try {
+            setLoading(true);
+            await axios.delete(`${API_BASE_URL}/api/card/image/${id}`, {
+                data: { imageType },
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                }
+            });
+
+            if (imageType === 'logo') {
+                setLogoFile(null);
+                setLogoPreview('');
+                setFormData(prev => ({ ...prev, logo: '' }));
+            } else if (imageType === 'background') {
+                setBgFile(null);
+                setBgPreview('');
+                setFormData(prev => ({ ...prev, backgroundImage: '' }));
+            }
+
+            setMessage({ type: 'success', text: `${imageType} deleted successfully!` });
+        } catch (error) {
+            console.error(`Error deleting ${imageType}:`, error);
+            setMessage({
+                type: 'error',
+                text: error.response?.data?.message || `Failed to delete ${imageType}`
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Fixed preview card style - prioritize preview URLs, then fallback to formData URLs
     const previewCardStyle = {
-        backgroundImage: bgPreview ? `url(${bgPreview})` : formData.backgroundImage ? `url(${formData.backgroundImage})` : 'none',
+        backgroundImage: (bgPreview || formData.backgroundImage) ?
+            `url(${bgPreview || formData.backgroundImage})` : 'none',
         backgroundSize: 'cover',
+        backgroundPosition: 'center',
         backgroundColor: formData.themeColor,
         fontFamily: formData.fontStyle,
         color: getContrastColor(formData.themeColor),
         transition: 'all 0.3s ease'
     };
 
-    // Function to determine text color based on background for optimal contrast
     function getContrastColor(hexColor) {
-        // Remove the # if present
         hexColor = hexColor.replace('#', '');
-
-        // Convert to RGB
         const r = parseInt(hexColor.substr(0, 2), 16);
         const g = parseInt(hexColor.substr(2, 2), 16);
         const b = parseInt(hexColor.substr(4, 2), 16);
-
-        // Calculate luminance - https://www.w3.org/TR/WCAG20-TECHS/G17.html
         const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-        // Return black for bright colors, white for dark colors
         return luminance > 0.5 ? '#000000' : '#ffffff';
     }
 
@@ -174,7 +331,6 @@ const DesignCardPage = () => {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Using the custom Navbar component */}
             <Navbar user={user} handleLogout={handleLogout} />
 
             <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -212,6 +368,7 @@ const DesignCardPage = () => {
                         {/* Form Section - takes 3/5 of the space */}
                         <div className="lg:col-span-3 p-8">
                             <form onSubmit={handleSubmit} className="space-y-6">
+                                {/* Card Information Section */}
                                 <div className="bg-indigo-50 p-5 rounded-lg mb-6">
                                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                         <CreditCard className="h-5 w-5 mr-2 text-indigo-600" />
@@ -267,6 +424,7 @@ const DesignCardPage = () => {
                                     </div>
                                 </div>
 
+                                {/* Contact Details Section */}
                                 <div className="bg-indigo-50 p-5 rounded-lg mb-6">
                                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                         <User className="h-5 w-5 mr-2 text-indigo-600" />
@@ -290,7 +448,6 @@ const DesignCardPage = () => {
                                         </div>
                                         <div>
                                             <label htmlFor="email" className="text-sm font-medium text-gray-700 flex items-center">
-
                                                 <Mail className="h-4 w-4 mr-1 text-gray-500" />
                                                 Email
                                             </label>
@@ -306,7 +463,6 @@ const DesignCardPage = () => {
                                         </div>
                                         <div>
                                             <label htmlFor="website" className="text-sm font-medium text-gray-700 flex items-center">
-
                                                 <Globe className="h-4 w-4 mr-1 text-gray-500" />
                                                 Website
                                             </label>
@@ -322,7 +478,6 @@ const DesignCardPage = () => {
                                         </div>
                                         <div>
                                             <label htmlFor="address" className="text-sm font-medium text-gray-700 flex items-center">
-
                                                 <MapPin className="h-4 w-4 mr-1 text-gray-500" />
                                                 Address
                                             </label>
@@ -338,6 +493,7 @@ const DesignCardPage = () => {
                                     </div>
                                 </div>
 
+                                {/* Card Appearance Section */}
                                 <div className="bg-indigo-50 p-5 rounded-lg mb-6">
                                     <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                         <Settings className="h-5 w-5 mr-2 text-indigo-600" />
@@ -375,21 +531,35 @@ const DesignCardPage = () => {
                                                 <option value="Playfair Display">Playfair Display</option>
                                             </select>
                                         </div>
+
+                                        {/* Logo Upload */}
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Company Logo</label>
                                             <div className="flex items-center">
-                                                <label className="cursor-pointer bg-white px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center">
-                                                    <Upload className="h-4 w-4 mr-1" />
-                                                    <span>Upload Logo</span>
+                                                <label className={`cursor-pointer px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center ${uploadingLogo ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'bg-white'}`}>
+                                                    {uploadingLogo ? (
+                                                        <>
+                                                            <svg className="animate-spin h-4 w-4 mr-1 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                            </svg>
+                                                            <span>Uploading...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Upload className="h-4 w-4 mr-1" />
+                                                            <span>Upload Logo</span>
+                                                        </>
+                                                    )}
                                                     <input
                                                         type="file"
                                                         className="sr-only"
                                                         accept="image/*"
+                                                        disabled={uploadingLogo}
                                                         onChange={(e) => {
                                                             const file = e.target.files[0];
                                                             if (file) {
-                                                                setLogoFile(file);
-                                                                setLogoPreview(URL.createObjectURL(file));
+                                                                handleLogoUpload(file);
                                                             }
                                                         }}
                                                     />
@@ -399,38 +569,58 @@ const DesignCardPage = () => {
                                                         <img
                                                             src={logoPreview || formData.logo}
                                                             alt="Logo preview"
-                                                            className="w-full h-full object-contain"
+                                                            className="w-full h-full object-contain border rounded"
                                                         />
                                                         <button
                                                             type="button"
                                                             onClick={() => {
-                                                                setLogoFile(null);
-                                                                setLogoPreview('');
-                                                                setFormData(prev => ({ ...prev, logo: '' }));
+                                                                if (id && !logoFile) {
+                                                                    handleDeleteImage('logo');
+                                                                } else {
+                                                                    setLogoFile(null);
+                                                                    setLogoPreview('');
+                                                                    setFormData(prev => ({ ...prev, logo: '' }));
+                                                                }
                                                             }}
-                                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                                                            title="Remove logo"
                                                         >
                                                             ×
                                                         </button>
                                                     </div>
                                                 )}
                                             </div>
+                                            <p className="text-xs text-gray-500 mt-1">Max file size: 5MB. Supported formats: JPG, PNG, GIF</p>
                                         </div>
+
+                                        {/* Background Image Upload */}
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Background Image</label>
                                             <div className="flex items-center">
-                                                <label className="cursor-pointer bg-white px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center">
-                                                    <Upload className="h-4 w-4 mr-1" />
-                                                    <span>Upload Background</span>
+                                                <label className={`cursor-pointer px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none flex items-center ${uploadingBg ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'bg-white'}`}>
+                                                    {uploadingBg ? (
+                                                        <>
+                                                            <svg className="animate-spin h-4 w-4 mr-1 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                            </svg>
+                                                            <span>Uploading...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Upload className="h-4 w-4 mr-1" />
+                                                            <span>Upload Background</span>
+                                                        </>
+                                                    )}
                                                     <input
                                                         type="file"
                                                         className="sr-only"
                                                         accept="image/*"
+                                                        disabled={uploadingBg}
                                                         onChange={(e) => {
                                                             const file = e.target.files[0];
                                                             if (file) {
-                                                                setBgFile(file);
-                                                                setBgPreview(URL.createObjectURL(file));
+                                                                handleBackgroundUpload(file);
                                                             }
                                                         }}
                                                     />
@@ -440,22 +630,28 @@ const DesignCardPage = () => {
                                                         <img
                                                             src={bgPreview || formData.backgroundImage}
                                                             alt="Background preview"
-                                                            className="w-full h-full object-cover rounded"
+                                                            className="w-full h-full object-cover rounded border"
                                                         />
                                                         <button
                                                             type="button"
                                                             onClick={() => {
-                                                                setBgFile(null);
-                                                                setBgPreview('');
-                                                                setFormData(prev => ({ ...prev, backgroundImage: '' }));
+                                                                if (id && !bgFile) {
+                                                                    handleDeleteImage('background');
+                                                                } else {
+                                                                    setBgFile(null);
+                                                                    setBgPreview('');
+                                                                    setFormData(prev => ({ ...prev, backgroundImage: '' }));
+                                                                }
                                                             }}
-                                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                                                            title="Remove background"
                                                         >
                                                             ×
                                                         </button>
                                                     </div>
                                                 )}
                                             </div>
+                                            <p className="text-xs text-gray-500 mt-1">Max file size: 5MB. Supported formats: JPG, PNG, GIF</p>
                                         </div>
                                     </div>
                                 </div>
@@ -470,7 +666,6 @@ const DesignCardPage = () => {
                                         className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                     />
                                     <label htmlFor="isPublished" className="ml-2 text-sm font-medium text-gray-700 flex items-center">
-
                                         <Eye className="h-4 w-4 mr-1 text-gray-500" />
                                         Publish card (make it visible to others)
                                     </label>

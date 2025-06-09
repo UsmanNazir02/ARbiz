@@ -46,6 +46,7 @@ app.use((req, res, next) => {
     next();
 });
 
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/', (req, res) => res.json({ message: `Welcome to the ${process.env.APP_NAME} Project` }));
 
