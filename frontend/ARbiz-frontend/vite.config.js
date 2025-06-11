@@ -9,7 +9,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
-    allowedHosts: ['281c-2400-adc1-154-aa00-b0ff-fbd5-2f4b-7fb0.ngrok-free.app', 'all'],
+    allowedHosts: ['48e6-2400-adc1-154-aa00-d0cb-75d-63b8-b491.ngrok-free.app', 'all'],
 
     // Move proxy INSIDE server configuration
     proxy: {
@@ -34,7 +34,7 @@ export default defineConfig({
 
     hmr: {
       protocol: 'wss',
-      host: '281c-2400-adc1-154-aa00-b0ff-fbd5-2f4b-7fb0.ngrok-free.app',
+      host: '48e6-2400-adc1-154-aa00-d0cb-75d-63b8-b491.ngrok-free.app',
       clientPort: 443,
       // Add timeout and retry options
       timeout: 60000,
